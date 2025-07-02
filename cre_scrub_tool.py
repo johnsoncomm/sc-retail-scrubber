@@ -145,3 +145,7 @@ if uploaded_files:
                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 else:
     st.info("👋 Upload your Property and Owner CoStar exports to get started.")
+                       file_name="SC_Retail_Merged.xlsx",
+                       mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+else:
+    st.info("👋 Upload your Property and Owner CoStar exports to get started.")
