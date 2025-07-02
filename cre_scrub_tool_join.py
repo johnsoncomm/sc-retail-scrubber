@@ -37,9 +37,12 @@ KEY_COLUMNS_OUTPUT = [
 ]
 
 def _clean_numeric(val):
-    if pd.isna(val):
+    try:
+        if pd.isna(val):
+            return pd.NA
+        return pd.to_numeric(re.sub(r"[^0-9.]", "", str(val)), errors="coerce")
+    except Exception:
         return pd.NA
-    return pd.to_numeric(re.sub(r"[^0-9.]", "", str(val)), errors="coerce")
 
 def make_join_key(addr, city):
     if pd.isna(addr) or pd.isna(city):
@@ -96,10 +99,12 @@ if uploaded_files and len(uploaded_files) == 2:
     if "size_sf" not in merged.columns:
         merged["size_sf"] = pd.NA
 
+    merged["size_sf"] = pd.to_numeric(merged["size_sf"], errors="coerce")
+
     merged = merged[
         merged["property_type"].str.lower().str.contains("retail", na=False)
         & (merged["state"].str.upper() == "SC")
-        & pd.to_numeric(merged["size_sf"], errors="coerce").between(1500, 30000, inclusive="both")
+        & merged["size_sf"].between(1500, 30000, inclusive="both")
     ]
 
     for col in KEY_COLUMNS_OUTPUT:
@@ -121,6 +126,10 @@ if uploaded_files and len(uploaded_files) == 2:
         data=output.getvalue(),
         file_name="SC_CoStar_Joined.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+elif uploaded_files:
+    st.warning("Please upload exactly two Excel files to begin.")
     )
 
 elif uploaded_files:
