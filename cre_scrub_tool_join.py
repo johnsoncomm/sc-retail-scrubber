@@ -77,18 +77,30 @@ def _clean_numeric(val):
         return pd.to_numeric(re.sub(r"[^0-9.]", "", str(val)), errors="coerce")
     except Exception: return pd.NA
 
-def normalise(df: pd.DataFrame) -> pd.DataFrame:
+ def normalise(df: pd.DataFrame) -> pd.DataFrame:
     # Rename columns to our standard names
     df = df.rename(columns={c: COLUMN_MAP.get(c, c) for c in df.columns})
 
-    # Pick a size column if it isn’t already mapped
+    # Make sure 'size_sf' exists
     if "size_sf" not in df.columns:
         for alt in ["RBA", "Total Available Space (SF)", "Rentable Building Area"]:
             if alt in df.columns:
                 df["size_sf"] = df[alt]
                 break
+        else:
+            df["size_sf"] = pd.NA
 
-    df["size_sf"] = df["size_sf"].apply(_clean_numeric) if "size_sf" in df.columns else pd.NA
+    df["size_sf"] = df["size_sf"].apply(_clean_numeric)
+
+    # Create a join key (fallback to property name if address missing)
+    if "address" in df.columns and df["address"].notna().any():
+        df["address_key"] = df["address"].astype(str).str.strip().str.lower()
+    elif "property_name" in df.columns:
+        df["address_key"] = df["property_name"].astype(str).str.strip().str.lower()
+    else:
+        df["address_key"] = ""
+
+    return df
 
     # ------------------------------------------------------------------
     # NEW: create a robust join key
@@ -138,7 +150,8 @@ if uploaded_files:
     mask = (
         merged["property_type"].astype(str).str.contains("retail", case=False, na=False)
         & (merged["state"].str.upper() == "SC")
-        & merged["size_sf"].between(1500, 30000, inclusive="both")
+        & pd.to_numeric(merged["size_sf"], errors="coerce").between(1500, 30000, inclusive="both")
+
     )
     filtered = merged.loc[mask]
 
