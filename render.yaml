@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: sc-retail-scrubber
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run cre_scrub_tool_join.py --server.address=0.0.0.0 --server.port=$PORT
+    autoDeploy: true
