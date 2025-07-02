@@ -31,6 +31,7 @@ uploaded_files = st.file_uploader(
 )
 
 COLUMN_MAP = {
+    # Property identifiers
     "Property Name": "property_name",
     "Name": "property_name",
     "Property": "property_name",
@@ -38,7 +39,9 @@ COLUMN_MAP = {
     "Street Address": "address",
     "City": "city",
     "State": "state",
+    "State/Province": "state",
     "Market": "market",
+    # Type & size
     "Property Type": "property_type",
     "Type": "property_type",
     "Property Subtype": "property_type",
@@ -48,6 +51,9 @@ COLUMN_MAP = {
     "GLA": "size_sf",
     "Size (SF)": "size_sf",
     "Rentable Building Area": "size_sf",
+    "RBA": "size_sf",
+    "Total Available Space (SF)": "size_sf",
+    # Ownership & contacts
     "Owner Name": "owner_name",
     "Owner": "owner_name",
     "Ownership": "owner_name",
@@ -57,6 +63,7 @@ COLUMN_MAP = {
     "Primary Contact": "contact_name",
     "Contact Name": "contact_name",
     "Contact Phone": "contact_phone",
+    # Pricing
     "Asking Price": "asking_price",
     "Price": "asking_price",
 }
