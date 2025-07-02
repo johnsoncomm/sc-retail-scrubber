@@ -107,7 +107,10 @@ if files and len(files) == 2:
     for col in ["property_type", "state", "size_sf"]:
         merged[col] = merged.get(col, pd.NA)
 
+    if "size_sf" in merged.columns:
     merged["size_sf"] = pd.to_numeric(merged["size_sf"], errors="coerce")
+else:
+    merged["size_sf"] = pd.NA
 
     # retail-SC filter
     filtered = merged[
