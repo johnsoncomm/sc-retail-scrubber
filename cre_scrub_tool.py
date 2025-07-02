@@ -6,13 +6,9 @@ os.environ["STREAMLIT_SERVER_PORT"] = os.environ.get("PORT", "8501")
 import re
 from io import BytesIO
 from pathlib import Path
-
 import pandas as pd
 import streamlit as st
 
-# -----------------------------
-# 1.  App layout & instructions
-# -----------------------------
 st.set_page_config(page_title="SC Retail Property Scrubber", layout="wide")
 st.title("South Carolina Retail Property Scrubber")
 
@@ -45,10 +41,13 @@ COLUMN_MAP = {
     "Market": "market",
     "Property Type": "property_type",
     "Type": "property_type",
+    "Property Subtype": "property_type",
+    "Primary Use": "property_type",
     "Building Size (SF)": "size_sf",
     "Gross Leasable Area": "size_sf",
     "GLA": "size_sf",
     "Size (SF)": "size_sf",
+    "Rentable Building Area": "size_sf",
     "Owner Name": "owner_name",
     "Owner": "owner_name",
     "Ownership": "owner_name",
@@ -88,10 +87,11 @@ def filter_sc_retail(df: pd.DataFrame) -> pd.DataFrame:
     for col in ["property_type", "state", "size_sf"]:
         if col not in df.columns:
             df[col] = pd.NA
-    df["property_type"] = df["property_type"].astype(str).str.lower()
+    df["property_type"] = df["property_type"].astype(str)
     df["size_sf"] = df["size_sf"].apply(_clean_numeric)
+
     mask = (
-        df["property_type"].str.contains("retail", na=False)
+        df["property_type"].str.contains("retail", case=False, na=False)
         & (df["state"].str.upper() == "SC")
         & (df["size_sf"] >= 1500)
         & (df["size_sf"] <= 30000)
@@ -139,5 +139,4 @@ if uploaded_files:
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
 else:
-    st.markdown("---\n**Need help?** Upload your Crexi or CoStar export file above. "
-                "If you’d like to expand features (maps, owner look‑ups, etc.), drop a line in the chat!")
+    st.info("👋 Upload a Crexi or CoStar export (CSV/XLSX) to get started.")
