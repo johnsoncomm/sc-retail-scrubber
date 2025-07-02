@@ -36,6 +36,7 @@ COLUMN_MAP = {
     "Property": "property_name",
     "Address": "address",
     "Street Address": "address",
+    "Property Address": "address",
     "City": "city",
     "State": "state",
     "State/Province": "state",
@@ -53,6 +54,9 @@ COLUMN_MAP = {
     "Contact Phone": "contact_phone",
     "Asking Price": "asking_price",
     "Price": "asking_price",
+    "Company Name": "company_name",
+    "Company Address": "company_address",
+    "Company Phone": "company_phone",
 }
 
 KEY_COLUMNS_OUTPUT = [
@@ -66,64 +70,30 @@ KEY_COLUMNS_OUTPUT = [
     "owner_phone",
     "contact_name",
     "contact_phone",
+    "company_name",
+    "company_address",
+    "company_phone",
 ]
 
 def _clean_numeric(val):
-    try:
-        if pd.isna(val):
-            return pd.NA
-        return pd.to_numeric(re.sub(r"[^0-9.]", "", str(val)), errors="coerce")
-    except Exception:
-        return pd.NA
+    
+try:
+    if Path(file.name).suffix.lower().startswith(".csv"):
+        df = pd.read_csv(file)
+        frames_single = [df]
+    else:
+        # Read ALL sheets and concatenate
+        sheets_dict = pd.read_excel(file, sheet_name=None)
+        frames_single = list(sheets_dict.values())
+except Exception as e:
+    st.error(f"Could not read {file.name}: {e}")
+    continue
 
-def normalise_columns(df: pd.DataFrame) -> pd.DataFrame:
-    renames = {old: new for old, new in COLUMN_MAP.items() if old in df.columns}
-    return df.rename(columns=renames)
+for single_df in frames_single:
+    single_df = normalise_columns(single_df)
+    single_df = filter_sc_retail(single_df)
+    frames.append(single_df)
 
-def add_size_column(df: pd.DataFrame) -> pd.DataFrame:
-    # Priority list with RBA first
-    size_cols = [
-        "RBA",
-        "Total Available Space (SF)",
-        "Rentable Building Area",
-        "GLA",
-        "Gross Leasable Area",
-        "Building Size (SF)"
-    ]
-    for col in size_cols:
-        if col in df.columns:
-            df["size_sf"] = df[col].apply(_clean_numeric)
-            break
-    if "size_sf" not in df.columns:
-        df["size_sf"] = pd.NA
-    return df
-
-def filter_sc_retail(df: pd.DataFrame) -> pd.DataFrame:
-    for col in ["property_type", "state"]:
-        if col not in df.columns:
-            df[col] = pd.NA
-    df["property_type"] = df["property_type"].astype(str)
-    df = add_size_column(df)
-    mask = (
-        df["property_type"].str.contains("retail", case=False, na=False)
-        & (df["state"].str.upper() == "SC")
-        & (df["size_sf"] >= 1500)
-        & (df["size_sf"] <= 30000)
-    )
-    return df.loc[mask]
-
-if uploaded_files:
-    st.info("Processing… please wait ⌛")
-    frames = []
-    for file in uploaded_files:
-        try:
-            if Path(file.name).suffix.lower().startswith(".csv"):
-                df = pd.read_csv(file)
-            else:
-                df = pd.read_excel(file)
-        except Exception as e:
-            st.error(f"Could not read {file.name}: {e}")
-            continue
         df = normalise_columns(df)
         df = filter_sc_retail(df)
         frames.append(df)
