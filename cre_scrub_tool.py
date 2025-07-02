@@ -31,7 +31,6 @@ uploaded_files = st.file_uploader(
 )
 
 COLUMN_MAP = {
-    # Property identifiers
     "Property Name": "property_name",
     "Name": "property_name",
     "Property": "property_name",
@@ -41,29 +40,17 @@ COLUMN_MAP = {
     "State": "state",
     "State/Province": "state",
     "Market": "market",
-    # Type & size
     "Property Type": "property_type",
     "Type": "property_type",
     "Property Subtype": "property_type",
     "Primary Use": "property_type",
-    "Building Size (SF)": "size_sf",
-    "Gross Leasable Area": "size_sf",
-    "GLA": "size_sf",
-    "Size (SF)": "size_sf",
-    "Rentable Building Area": "size_sf",
-    "RBA": "size_sf",
-    "Total Available Space (SF)": "size_sf",
-    # Ownership & contacts
     "Owner Name": "owner_name",
     "Owner": "owner_name",
-    "Ownership": "owner_name",
     "Owner Phone": "owner_phone",
-    "Owner Primary Phone": "owner_phone",
     "Contact Number": "owner_phone",
     "Primary Contact": "contact_name",
     "Contact Name": "contact_name",
     "Contact Phone": "contact_phone",
-    # Pricing
     "Asking Price": "asking_price",
     "Price": "asking_price",
 }
@@ -82,21 +69,41 @@ KEY_COLUMNS_OUTPUT = [
 ]
 
 def _clean_numeric(val):
-    if pd.isna(val):
+    try:
+        if pd.isna(val):
+            return pd.NA
+        return pd.to_numeric(re.sub(r"[^0-9.]", "", str(val)), errors="coerce")
+    except Exception:
         return pd.NA
-    return pd.to_numeric(re.sub(r"[^0-9.]", "", str(val)), errors="coerce")
 
 def normalise_columns(df: pd.DataFrame) -> pd.DataFrame:
     renames = {old: new for old, new in COLUMN_MAP.items() if old in df.columns}
     return df.rename(columns=renames)
 
+def add_size_column(df: pd.DataFrame) -> pd.DataFrame:
+    # Priority list with RBA first
+    size_cols = [
+        "RBA",
+        "Total Available Space (SF)",
+        "Rentable Building Area",
+        "GLA",
+        "Gross Leasable Area",
+        "Building Size (SF)"
+    ]
+    for col in size_cols:
+        if col in df.columns:
+            df["size_sf"] = df[col].apply(_clean_numeric)
+            break
+    if "size_sf" not in df.columns:
+        df["size_sf"] = pd.NA
+    return df
+
 def filter_sc_retail(df: pd.DataFrame) -> pd.DataFrame:
-    for col in ["property_type", "state", "size_sf"]:
+    for col in ["property_type", "state"]:
         if col not in df.columns:
             df[col] = pd.NA
     df["property_type"] = df["property_type"].astype(str)
-    df["size_sf"] = df["size_sf"].apply(_clean_numeric)
-
+    df = add_size_column(df)
     mask = (
         df["property_type"].str.contains("retail", case=False, na=False)
         & (df["state"].str.upper() == "SC")
