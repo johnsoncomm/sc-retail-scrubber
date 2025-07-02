@@ -1,3 +1,6 @@
+import os
+os.environ["STREAMLIT_SERVER_ADDRESS"] = "0.0.0.0"
+os.environ["STREAMLIT_SERVER_PORT"] = os.environ.get("PORT", "8501")
 
 # app.py
 # South Carolina Retail Property Scrubber – Streamlit Web App
