@@ -78,15 +78,30 @@ def _clean_numeric(val):
     except Exception: return pd.NA
 
 def normalise(df: pd.DataFrame) -> pd.DataFrame:
+    # Rename columns to our standard names
     df = df.rename(columns={c: COLUMN_MAP.get(c, c) for c in df.columns})
+
+    # Pick a size column if it isn’t already mapped
     if "size_sf" not in df.columns:
         for alt in ["RBA", "Total Available Space (SF)", "Rentable Building Area"]:
             if alt in df.columns:
                 df["size_sf"] = df[alt]
                 break
+
     df["size_sf"] = df["size_sf"].apply(_clean_numeric) if "size_sf" in df.columns else pd.NA
-    df["address_key"] = df["address"].astype(str).str.strip().str.lower()
+
+    # ------------------------------------------------------------------
+    # NEW: create a robust join key
+    # ------------------------------------------------------------------
+    if "address" in df.columns and df["address"].notna().any():
+        df["address_key"] = df["address"].astype(str).str.strip().str.lower()
+    elif "property_name" in df.columns:
+        df["address_key"] = df["property_name"].astype(str).str.strip().str.lower()
+    else:
+        # sheet has no joinable info → drop it
+        df["address_key"] = ""
     return df
+
 
 def load_all_sheets(file):
     if Path(file.name).suffix.lower().startswith(".csv"):
