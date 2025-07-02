@@ -1,37 +1,25 @@
 import re
 from io import BytesIO
-from pathlib import Path
 import pandas as pd
 import streamlit as st
 
 COLUMN_MAP = {
     "Property Name": "property_name",
-    "Name": "property_name",
-    "Property": "property_name",
     "Property Address": "address",
     "Address": "address",
-    "Street Address": "address",
     "City": "city",
     "State": "state",
-    "Market": "market",
+    "State / Country": "state",
     "Property Type": "property_type",
-    "Type": "property_type",
     "Building Size (SF)": "size_sf",
-    "Gross Leasable Area": "size_sf",
-    "GLA": "size_sf",
-    "Size (SF)": "size_sf",
+    "RBA": "size_sf",
+    "Total Available Space (SF)": "size_sf",
     "Owner Name": "owner_name",
-    "Owner": "owner_name",
-    "Ownership": "owner_name",
     "Owner Phone": "owner_phone",
-    "Owner Primary Phone": "owner_phone",
-    "Contact Number": "owner_phone",
-    "Primary Contact": "contact_name",
-    "Contact Name": "contact_name",
-    "Contact Phone": "contact_phone",
     "Company Name": "company_name",
     "Company Address": "company_address",
     "Company Phone": "company_phone",
+    "Phone": "company_phone",
 }
 
 KEY_COLUMNS_OUTPUT = [
@@ -40,13 +28,12 @@ KEY_COLUMNS_OUTPUT = [
     "city",
     "state",
     "size_sf",
+    "property_type",
     "owner_name",
     "owner_phone",
-    "contact_name",
-    "contact_phone",
     "company_name",
     "company_address",
-    "company_phone",
+    "company_phone"
 ]
 
 def _clean_numeric(val):
@@ -54,26 +41,27 @@ def _clean_numeric(val):
         return pd.NA
     return pd.to_numeric(re.sub(r"[^0-9.]", "", str(val)), errors="coerce")
 
+def make_join_key(addr, city):
+    if pd.isna(addr) or pd.isna(city):
+        return ""
+    key = f"{addr} {city}".lower()
+    key = re.sub(r"[^a-z0-9]", "", key)
+    return key
+
 def normalise(df: pd.DataFrame) -> pd.DataFrame:
     df = df.rename(columns={c: COLUMN_MAP.get(c, c) for c in df.columns})
 
-    if "size_sf" not in df.columns:
-        for alt in ["RBA", "Total Available Space (SF)", "Rentable Building Area"]:
-            if alt in df.columns:
-                df["size_sf"] = df[alt]
-                break
-        else:
-            df["size_sf"] = pd.NA
-
-    df["size_sf"] = df["size_sf"].apply(_clean_numeric)
-
-    if "address" in df.columns and df["address"].notna().any():
-        df["address_key"] = df["address"].astype(str).str.strip().str.lower()
-    elif "property_name" in df.columns:
-        df["address_key"] = df["property_name"].astype(str).str.strip().str.lower()
+    if "size_sf" in df.columns:
+        df["size_sf"] = df["size_sf"].apply(_clean_numeric)
     else:
-        df["address_key"] = ""
+        df["size_sf"] = pd.NA
 
+    if "address" not in df.columns:
+        df["address"] = pd.NA
+    if "city" not in df.columns:
+        df["city"] = pd.NA
+
+    df["join_key"] = df.apply(lambda row: make_join_key(row["address"], row["city"]), axis=1)
     return df
 
 def load_and_normalise(file):
@@ -99,14 +87,12 @@ if uploaded_files and len(uploaded_files) == 2:
     df1 = load_and_normalise(uploaded_files[0])
     df2 = load_and_normalise(uploaded_files[1])
 
-    merged = pd.merge(df1, df2, on="address_key", suffixes=("_left", "_right"), how="outer")
+    merged = pd.merge(df1, df2, on="join_key", suffixes=("_left", "_right"), how="left")
 
     if "property_type" not in merged.columns:
         merged["property_type"] = ""
-
     if "state" not in merged.columns:
         merged["state"] = ""
-
     if "size_sf" not in merged.columns:
         merged["size_sf"] = pd.NA
 
